@@ -178,7 +178,14 @@ function startWsServer(port, onConnection) {
     socket.setNoDelay(true);
     onConnection(new WsConnection(socket), req);
   });
-  server.on("error", (err) => log("ws server error", err.message));
+  server.on("error", (err) => {
+    if (err.code === "EADDRINUSE") {
+      portBusy = true;
+      log(`port ${port} is already in use: another Claude Bridge server (Claude Code or Codex) owns the Foundry connection. Only one assistant can hold the bridge at a time; close the other one or change CLAUDE_BRIDGE_PORT and the module's port setting.`);
+      return;
+    }
+    log("ws server error", err.message);
+  });
   server.listen(port, "127.0.0.1", () => log(`listening on ws://127.0.0.1:${port}`));
   return server;
 }
@@ -187,6 +194,7 @@ function startWsServer(port, onConnection) {
 /*  Foundry connection + request routing                                        */
 /* ============================================================================ */
 
+let portBusy = false;        // another bridge server already owns the port
 let foundry = null;          // active WsConnection
 let hello = null;            // info sent by the module
 let connectedAt = null;
@@ -266,6 +274,10 @@ function request(op, params, timeoutMs = DEFAULT_TIMEOUT) {
 }
 
 function notConnectedHint() {
+  if (portBusy) {
+    return `Port ${PORT} is already in use by another Claude Bridge server (for example Codex while Claude Code is open, or the reverse). ` +
+      "Only one assistant can hold the Foundry connection at a time: close the other assistant or its bridge server and retry.";
+  }
   return `Foundry is not connected to the Claude Bridge server (ws://localhost:${PORT}). ` +
     "In Foundry, log in as GM, open Configure Settings → Claude Bridge, enable the bridge and check the port. " +
     "The module reconnects on its own. The GM browser must run on this machine.";

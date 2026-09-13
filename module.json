@@ -2,9 +2,9 @@
   "id": "claude-bridge",
   "title": "Claude Bridge",
   "description": "Connects the GM's browser to a local Claude Code MCP server so Claude can inspect and script the world directly (documents, flags, macros, module APIs). GM client only; connects to ws://localhost.",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "manifest": "https://github.com/teshaman/claude-bridge/releases/latest/download/module.json",
-  "download": "https://github.com/teshaman/claude-bridge/releases/download/1.0.0/module.zip",
+  "download": "https://github.com/teshaman/claude-bridge/releases/download/1.0.1/module.zip",
   "authors": [
     {
       "name": "Pillars of Palor"

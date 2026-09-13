@@ -30,6 +30,19 @@ claude mcp add -s user claude-bridge -- node "C:\Users\alexg\Documents\Foundry\P
 
 Restart Claude Code. The `bridge_status` tool reports whether Foundry is connected.
 
+## Using it from Codex (ChatGPT) as well
+
+The MCP server is plain stdio, so the OpenAI Codex CLI can load it too. In `~/.codex/config.toml`:
+
+```toml
+[mcp_servers.claude-bridge]
+enabled = true
+command = "node"
+args = ['C:\Users\alexg\Documents\Foundry\Pillars of palor\claude-bridge\mcp\server.mjs']
+```
+
+Only one assistant can hold the bridge at a time: the server binds port 30311 and the Foundry module connects to one port. If Claude Code and Codex are both open, the second server reports the port as busy and its tools explain that; close one of them or give it a different port (`CLAUDE_BRIDGE_PORT` plus the module's port setting).
+
 ## Optional shared token
 
 Start the server with `CLAUDE_BRIDGE_TOKEN=<secret>` (add `-e CLAUDE_BRIDGE_TOKEN=<secret>` to the
