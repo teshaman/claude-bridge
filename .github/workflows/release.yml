@@ -27,8 +27,14 @@ jobs:
           mv module.json.tmp module.json
           cat module.json
 
+      # Wiki rule (section D6): zip the module FOLDER, so module.zip contains <module-id>/...
       - name: Build module.zip
-        run: zip -r module.zip . -x '.git/*' '.github/*' 'backups/*' '*.zip' 'RELEASE_NOTES.md'
+        run: |
+          ID=$(jq -r .id module.json)
+          rm -rf /tmp/build && mkdir -p "/tmp/build/$ID"
+          rsync -a --exclude '.git' --exclude '.github' --exclude 'backups' --exclude '*.zip' --exclude 'RELEASE_NOTES.md' --exclude '.gitignore' --exclude '.gitattributes' ./ "/tmp/build/$ID/"
+          (cd /tmp/build && zip -r "$GITHUB_WORKSPACE/module.zip" "$ID")
+          unzip -l module.zip
 
       - name: Extract release notes from CHANGELOG.md
         run: |
