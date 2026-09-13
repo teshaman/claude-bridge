@@ -1,0 +1,52 @@
+# Builds and publishes a Foundry VTT module release whenever a version tag
+# (plain X.Y.Z, no "v" prefix) is pushed. Managed by _tools/Publish-Module.ps1.
+name: Release
+
+on:
+  push:
+    tags:
+      - '[0-9]+.[0-9]+.[0-9]+'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Stamp module.json with version, manifest and download URLs
+        run: |
+          TAG="${GITHUB_REF_NAME}"
+          REPO="https://github.com/${GITHUB_REPOSITORY}"
+          jq --arg v "$TAG" \
+             --arg m "$REPO/releases/latest/download/module.json" \
+             --arg d "$REPO/releases/download/$TAG/module.zip" \
+             '.version = $v | .manifest = $m | .download = $d' module.json > module.json.tmp
+          mv module.json.tmp module.json
+          cat module.json
+
+      - name: Build module.zip
+        run: zip -r module.zip . -x '.git/*' '.github/*' 'backups/*' '*.zip' 'RELEASE_NOTES.md'
+
+      - name: Extract release notes from CHANGELOG.md
+        run: |
+          TAG="${GITHUB_REF_NAME}"
+          if [ -f CHANGELOG.md ]; then
+            awk -v v="$TAG" '/^## /{p = ($2 == v)} p' CHANGELOG.md > RELEASE_NOTES.md
+          fi
+          if [ ! -s RELEASE_NOTES.md ]; then
+            echo "Release $TAG" > RELEASE_NOTES.md
+          fi
+          cat RELEASE_NOTES.md
+
+      - name: Publish GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: ${{ github.ref_name }}
+          body_path: RELEASE_NOTES.md
+          files: |
+            module.json
+            module.zip
