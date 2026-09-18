@@ -19,7 +19,7 @@ import http from "node:http";
 import crypto from "node:crypto";
 import readline from "node:readline";
 
-const VERSION = "1.0.0";
+const VERSION = "1.0.2";
 const PORT = Number(process.env.CLAUDE_BRIDGE_PORT || 30311);
 const TOKEN = process.env.CLAUDE_BRIDGE_TOKEN || "";
 const DEFAULT_TIMEOUT = 30000;
@@ -180,13 +180,21 @@ function startWsServer(port, onConnection) {
   });
   server.on("error", (err) => {
     if (err.code === "EADDRINUSE") {
+      // Another bridge server (a previous session still shutting down, or Codex) holds the port. Keep trying:
+      // once it lets go, this server binds and the Foundry module reconnects on its own.
+      if (!portBusy) log(`port ${port} is already in use: another Claude Bridge server (Claude Code or Codex) owns the Foundry connection. Only one assistant can hold the bridge at a time; close the other one or change CLAUDE_BRIDGE_PORT and the module's port setting. Retrying every ${LISTEN_RETRY_MS / 1000}s.`);
       portBusy = true;
-      log(`port ${port} is already in use: another Claude Bridge server (Claude Code or Codex) owns the Foundry connection. Only one assistant can hold the bridge at a time; close the other one or change CLAUDE_BRIDGE_PORT and the module's port setting.`);
+      setTimeout(() => server.listen(port, "127.0.0.1"), LISTEN_RETRY_MS);
       return;
     }
     log("ws server error", err.message);
   });
-  server.listen(port, "127.0.0.1", () => log(`listening on ws://127.0.0.1:${port}`));
+  server.on("listening", () => {
+    if (portBusy) log(`port ${port} is free again`);
+    portBusy = false;
+    log(`listening on ws://127.0.0.1:${port}`);
+  });
+  server.listen(port, "127.0.0.1");
   return server;
 }
 
@@ -194,7 +202,8 @@ function startWsServer(port, onConnection) {
 /*  Foundry connection + request routing                                        */
 /* ============================================================================ */
 
-let portBusy = false;        // another bridge server already owns the port
+let portBusy = false;        // another bridge server owns the port right now (we keep retrying)
+const LISTEN_RETRY_MS = 3000;
 let foundry = null;          // active WsConnection
 let hello = null;            // info sent by the module
 let connectedAt = null;
@@ -276,7 +285,7 @@ function request(op, params, timeoutMs = DEFAULT_TIMEOUT) {
 function notConnectedHint() {
   if (portBusy) {
     return `Port ${PORT} is already in use by another Claude Bridge server (for example Codex while Claude Code is open, or the reverse). ` +
-      "Only one assistant can hold the Foundry connection at a time: close the other assistant or its bridge server and retry.";
+      "Only one assistant can hold the Foundry connection at a time: close the other assistant or its bridge server. This server retries the port every few seconds and connects on its own once it is free.";
   }
   return `Foundry is not connected to the Claude Bridge server (ws://localhost:${PORT}). ` +
     "In Foundry, log in as GM, open Configure Settings → Claude Bridge, enable the bridge and check the port. " +

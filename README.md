@@ -41,7 +41,7 @@ command = "node"
 args = ['C:\Users\alexg\Documents\Foundry\Pillars of palor\claude-bridge\mcp\server.mjs']
 ```
 
-Only one assistant can hold the bridge at a time: the server binds port 30311 and the Foundry module connects to one port. If Claude Code and Codex are both open, the second server reports the port as busy and its tools explain that; close one of them or give it a different port (`CLAUDE_BRIDGE_PORT` plus the module's port setting).
+Only one assistant can hold the bridge at a time: the server binds port 30311 and the Foundry module connects to one port. If Claude Code and Codex are both open, the second server reports the port as busy and its tools explain that; close one of them or give it a different port (`CLAUDE_BRIDGE_PORT` plus the module's port setting). Since 1.0.2 the waiting server retries the port every few seconds and takes it over as soon as the other one exits, so a Claude Code restart no longer leaves the bridge dead for the session.
 
 ## Optional shared token
 
